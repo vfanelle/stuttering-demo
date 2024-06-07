@@ -51,9 +51,7 @@ displaying_files = st.sidebar.multiselect(
 
 sample_id = st.sidebar.selectbox("Select sample", range(10))
 
-data = {
-    file_to_name[file]: json.load(open(f"asr_outputs/{file}"))[sample_id]["transcript"] for file in displaying_files
-}
+data = {file_to_name[file]: json.load(open(f"asr_outputs/{file}"))[sample_id] for file in displaying_files}
 
 items = list(data.items())
 
@@ -68,6 +66,26 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+def wer(gt, pred):
+    gt = gt.split()
+    pred = pred.split()
+    n = len(gt)
+    m = len(pred)
+    dp = [[0] * (m + 1) for _ in range(n + 1)]
+    for i in range(n + 1):
+        for j in range(m + 1):
+            if i == 0:
+                dp[i][j] = j
+            elif j == 0:
+                dp[i][j] = i
+            elif gt[i - 1] == pred[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+    return dp[n][m] / n
+
+
 num_cols = 3
 num_rows = (len(items) + num_cols - 1) // num_cols
 for row in range(num_rows):
@@ -80,7 +98,9 @@ for row in range(num_rows):
                 f"""
             <div style="border: 2px solid #ddd; border-radius: 6px; padding: 20px 20px 20px 20px; margin: 10px 0; width: 100%;">
                 <h5 style="margin: 0;">{key}</h4>
-                <p style="margin: 0;">{value}</p>
+                <p style="margin: 0;">{value["transcript"]}</p>
+                </br>
+                <p style="margin: 0;">WER: {round(wer(value["transcript"], ground_truth_value), 3)}</p>
             </div>
             """,
                 unsafe_allow_html=True,
